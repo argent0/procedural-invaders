@@ -9,6 +9,7 @@ var g_Config = {
 	"pixel_size": 4,
    "invader_size": 5,
    "invader_simetric_width": 2,
+   "interinvader_space": 2,
    //"player_cannon": 65024,
    "player_cannon": 32512,
    "player_bullet_position_offset": 2,
@@ -77,8 +78,8 @@ with_simetric_invaders = function(body, put_pixel) {
          digit =  seed_str[seed_str.length - 1 - (digit_index % seed_str.length)];
          
          if (digit === "1") {
-            var x = digit_index % (g_Config.invader_size - 2);
-            var y = Math.floor(digit_index / (g_Config.invader_size - 2));
+            var x = digit_index % (g_Config.invader_size - g_Config.invader_simetric_width);
+            var y = Math.floor(digit_index / (g_Config.invader_size -g_Config.invader_simetric_width));
             var reflected_x = g_Config.invader_size - x - 1;
             put_pixel(invader_x + x, invader_y + y);
             put_pixel(invader_x + reflected_x, invader_y + y);
@@ -111,10 +112,11 @@ var with_bullets = function(body, put_pixel) {
    var _bullets = {};
    var _bullet_id = 0;
 
-   var Bullet = function(x, y) {
+   var Bullet = function(x, y, velocity) {
       this.x = x;
       this.y = y;
       this.id = _bullet_id;
+      this.velocity = velocity;
 
       _bullet_id +=  1;
 
@@ -122,26 +124,32 @@ var with_bullets = function(body, put_pixel) {
    };
 
    var create_bullet = function(x, y) {
-      var bullet = new Bullet(x, y);
+      /* Bullets travel up screen.*/
+      var bullet = new Bullet(x, y, -1);
       _bullets[bullet.id.toString()] = bullet;
+   };
+
+   var create_bomb = function(x, y) {
+      /* Bombs travel down screen.*/
+      var bomb = new Bullet(x, y, 1);
+      _bullets[bomb.id.toString()] = bomb;
    };
 
    var update_bullets = function () {
       _.each(_bullets, function(bullet) {
-         if (bullet.y < 0) {
+         if ((bullet.y < 0) || (bullet.y > g_Config.screen_height)) {
             delete _bullet_id[bullet.id.toString()];
          } else {
-            bullet.y -= 1;
-
+            bullet.y += bullet.velocity;
             put_pixel(bullet.x, bullet.y);
          }
       });
    };
 
-   body(update_bullets, create_bullet);
+   body(update_bullets, create_bullet, create_bomb);
 };
 
-var with_invasion = function(body, draw_invader, create_bullet) {
+var with_invasion = function(body, draw_invader, create_bomb) {
 
    var invasion_x = 0;
    var invasion_y = 10;
@@ -149,15 +157,37 @@ var with_invasion = function(body, draw_invader, create_bullet) {
    var invader_cols = 15;
    var invader_rows = 5;
 
+   var _remaining_invaders = [];
+   var col = 0;
+   var row = 0;
+
+   var setup_invation = function() {
+      for(row = 0; row < invader_rows; row++) {
+         _remaining_invaders[row] = [];
+         for(col = 0; col < invader_cols; col++) {
+            _remaining_invaders[row][col] = col;
+         }
+      }
+   };
+
    var draw_invasion = function () {
       var x = 0;
       for(x = 0; x < invader_cols * invader_rows; x++) {
          draw_invader(x, 
-                      invasion_x + (x % invader_cols) * (g_Config.invader_size + 2),
-                      invasion_y + Math.floor(x / invader_cols) * (g_Config.invader_size + 2));
+                      invasion_x + (x % invader_cols) * (g_Config.invader_size + g_Config.interinvader_space),
+                      invasion_y + Math.floor(x / invader_cols) * (g_Config.invader_size +g_Config.interinvader_space));
       }
    };
 
+   var _drop_bomb = function() {
+      var max_row = _remaining_invaders.length - 1;
+      var present_invaders = _.filter(_remaining_invaders[max_row], function(col) { return (col > 0); });
+      var firing_invader = _.sample(present_invaders);
+      create_bomb(invasion_x +
+                     firing_invader * (g_Config.invader_size + g_Config.interinvader_space) +
+                     g_Config.invader_simetric_width + 1,
+                  invasion_y + g_Config.invader_size + max_row * (g_Config.invader_size + g_Config.interinvader_space));
+   };
 
    var update_invasion = function() {
       if (invasion_direction === "left") {
@@ -165,16 +195,23 @@ var with_invasion = function(body, draw_invader, create_bullet) {
          invasion_x -= 1;
          } else {
             invasion_direction = "right";
+            invasion_y++;
+            _drop_bomb();
+            _drop_bomb();
          }
       } else {
          if (invasion_x < (g_Config.screen_width - invader_cols * (g_Config.invader_size + 2))) {
             invasion_x += 1;
          } else {
             invasion_direction = "left";
+            invasion_y++;
+            _drop_bomb();
+            _drop_bomb();
          }
       }
    };
 
+   setup_invation();
    body(draw_invasion, update_invasion);
 };
 
@@ -220,11 +257,10 @@ var with_player_cannon = function (body, draw_invader, create_bullet) {
    body(draw_player_cannon, player_action);
 };
 
-
 with_game_canvas( function(clear_screen, drawing_context) {
 with_pixelated_screen(function(put_pixel, clear_pixelated_screen) {
 with_simetric_invaders(function(draw_invader) {
-with_bullets(function(update_bullets, create_bullet) {
+with_bullets(function(update_bullets, create_bullet, create_bomb) {
 with_invasion(function(draw_invasion, update_invasion) {
 with_player_cannon(function(draw_player_cannon, player_action) {
 with_key_bindings(function(bind_key) {
@@ -246,7 +282,7 @@ with_loop(100, function() {
 }); //with_loop
 }); //with_key_bindings
 }, draw_invader, create_bullet); //with_player_cannon
-}, draw_invader, create_bullet);
+}, draw_invader, create_bomb); //with_invasion
 }, put_pixel); //with_bullets
 }, put_pixel);}, drawing_context, clear_screen); //with_pixelated_screen
 });
