@@ -10,7 +10,6 @@ var g_Config = {
    "invader_size": 5,
    "invader_simetric_width": 2,
    "interinvader_space": 2,
-   //"player_cannon": 65024,
    "player_cannon": 32512,
    "player_bullet_position_offset": 2,
    "player_initial_lives": 2,
@@ -570,7 +569,13 @@ var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at
       _score += amount;
    };
 
-   body(draw_ui, increase_score, reset_score);
+   var draw_game_over_screen = function () {
+      write_text_at("Game Over", g_Config.screen_width / 4, g_Config.screen_height / 2);
+      write_text_at("Score: " + _score, g_Config.screen_width / 4, g_Config.screen_height / 2 +
+                    g_Config.message_font_height / g_Config.pixel_size);
+   };
+
+   body(draw_ui, increase_score, reset_score, draw_game_over_screen);
 };
 
 with_game_canvas( function(clear_screen, drawing_context) {
@@ -579,7 +584,7 @@ with_simetric_invaders(function(draw_invader) {
 with_bullets(function(update_bullets, create_bullet, create_bomb, reset_targets, register_target, reset_bullets) {
 with_invasion(function(setup_invasion, draw_invasion, update_invasion, invasion_events) {
 with_player_cannon(function(draw_player_cannon, player_action, remaining_player_lives, reset_player_position, reset_player_lives, player_events) {
-with_ui(function(draw_ui, increase_score, reset_score) {
+with_ui(function(draw_ui, increase_score, reset_score, draw_game_over_screen) {
 with_key_bindings(function(bind_key) {
 with_loop(100, function(interruptions, start_loop, pause_loop) {
       clear_pixelated_screen();
@@ -616,7 +621,7 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
       "player_loses_all_lives": function(start_loop, pause_loop) {
          pause_loop();
          clear_screen();
-         write_text_at("Game Over", g_Config.screen_width / 4, g_Config.screen_height / 2);
+         draw_game_over_screen();
          setup_invasion();
          reset_player_position();
          reset_player_lives();
