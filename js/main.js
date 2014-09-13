@@ -14,6 +14,7 @@ var g_Config = {
    "player_cannon": 32512,
    "player_bullet_position_offset": 2,
    "player_initial_lives": 2,
+   "player_inter_shoot_turns": 10,
    "invasor_kill_score": 100,
    "initial_invader_cols": 7,
    "initial_invader_rows": 4,
@@ -22,6 +23,8 @@ var g_Config = {
 };
 
 g_Config.message_font_height = g_Config.pixel_size * 2;
+g_Config.canvas_width = g_Config.screen_width * g_Config.pixel_size;
+g_Config.canvas_height = g_Config.screen_height * g_Config.pixel_size;
 
 var g_keys = {
    "left": 37,
@@ -29,8 +32,12 @@ var g_keys = {
    "space": 32,
 };
 
-g_Config.canvas_width = g_Config.screen_width * g_Config.pixel_size;
-g_Config.canvas_height = g_Config.screen_height * g_Config.pixel_size;
+var sound = function(filename) {
+   var snd = new Audio(filename);
+   return function () {
+      snd.play();
+   };
+};
 
 var with_pixelated_screen = function(body, drawing_context, clear_screen, screen_width, screen_height) {
 
@@ -261,10 +268,14 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
       invasion_y = g_Config.interinvader_space + g_Config.invader_size;
    };
 
-   var _remove_invader = function(row, col) {
-      _remaining_invaders[row][col] = -1;
-      _invasion_events.push("invasor_killed");
-   };
+   var _remove_invader = (function() {
+      var explosion_sound = sound('art/sound/explosion.ogg');
+      return function(row, col) {
+         _remaining_invaders[row][col] = -1;
+         _invasion_events.push("invasor_killed");
+         explosion_sound();
+      };
+   }());
 
    var _is_invader_present = function(row, col) {
       return  _remaining_invaders[row][col] != -1;
@@ -414,23 +425,23 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
       return [ret];
    };
 
-   var _decrease_player_lives = function () {
-      _player_lives--;
-      if (_player_lives < 0) {
-         _player_events.push("player_loses_all_lives");
-      } else {
-         _player_events.push("player_loses_one_life");
-      }
-   };
+   var _decrease_player_lives = (function() {
+      var explosion_sound = sound('art/sound/player-explosion.ogg');
+      return function () {
+         _player_lives--;
+         explosion_sound();
+         if (_player_lives < 0) {
+            _player_events.push("player_loses_all_lives");
+         } else {
+            _player_events.push("player_loses_one_life");
+         }
+      };
+   }());
 
    var remaining_player_lives = function() {
       return _player_lives;
    };
 
-   var draw_player_cannon = function() {
-      draw_invader(g_Config.player_cannon, player_x, player_y);
-      register_target(player_x, player_y, _decrease_player_lives);
-   };
 
    var move_left = function() {
       if (player_x > 0) {
@@ -444,9 +455,27 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
       }
    };
 
-   var fire = function() {
-      create_bullet(player_x + g_Config.player_bullet_position_offset , player_y + 2);
+   var _turns_to_next_fire = 0;
+
+   var draw_player_cannon = function() {
+      draw_invader(g_Config.player_cannon, player_x, player_y);
+      register_target(player_x, player_y, _decrease_player_lives);
+
+      if (_turns_to_next_fire > 0) {
+         _turns_to_next_fire--;
+      }
    };
+
+   var fire = (function() {
+      var phaser_sound = sound("art/sound/phaser.wav");
+      return function() {
+         if (_turns_to_next_fire === 0) {
+            phaser_sound();
+            create_bullet(player_x + g_Config.player_bullet_position_offset , player_y + 2);
+            _turns_to_next_fire = g_Config.player_inter_shoot_turns;
+         }
+      };
+   }());
 
    var player_action = {
       "fire": fire,
@@ -543,12 +572,6 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
 }, put_pixel);}, drawing_context, clear_screen, g_Config.screen_width, g_Config.screen_height); //with_pixelated_screen
 });
 
-var sound = function(filename) {
-   var snd = new Audio(filename);
-   return function () {
-      snd.play();
-   };
-};
 
 /* Ein Klein Todo
  * The Invasion
