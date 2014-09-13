@@ -20,6 +20,7 @@ var g_Config = {
    "initial_invader_rows": 4,
    "invasion_max_shoots_per_turn": 2,
    "invasion_shoot_probability": 0.1,
+   "invasion_inter_movement_turns": 1,
 };
 
 g_Config.message_font_height = g_Config.pixel_size * 2;
@@ -357,11 +358,10 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
       }
    };
 
-   var update_invasion = function() {
-
+   var _move_invasion = function() {
       if (invasion_direction === "left") {
          if (invasion_x > 0 - _invasion_min_col() * invasion_cell_size) {
-         invasion_x -= 1;
+            invasion_x -= 1;
          } else {
             invasion_direction = "right";
             invasion_y++;
@@ -373,6 +373,17 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
             invasion_direction = "left";
             invasion_y++;
          }
+      }
+   };
+
+   var _turns_to_next_movement = 0;
+   var update_invasion = function() {
+
+      if (_turns_to_next_movement === 0) {
+         _move_invasion();
+         _turns_to_next_movement = g_Config.invasion_inter_movement_turns;
+      } else {
+         _turns_to_next_movement--;
       }
 
       var i = 0;
