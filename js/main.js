@@ -15,10 +15,8 @@ var g_Config = {
    "player_initial_lives": 3,
    "player_inter_shoot_turns": 10,
    "invasor_kill_score": 100,
-   "initial_invader_cols": 2,
-   "initial_invader_rows": 2,
-   //"initial_invader_cols": 7,
-   //"initial_invader_rows": 4,
+   "initial_invader_cols": 7,
+   "initial_invader_rows": 4,
    "invasion_max_shoots_per_turn": 2,
    "invasion_shoot_probability": 0.1,
    "invasion_inter_movement_turns": 1,
@@ -297,6 +295,7 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
    var invader_rows = g_Config.initial_invader_rows;
    var _number_of_invaders_remaining = invader_rows * invader_cols;
    var invasion_cell_size = (g_Config.invader_size + g_Config.interinvader_space);
+   var _invasor_shape_offeset = 0;
 
    var _invasion_events = [];
    
@@ -321,6 +320,7 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
       invasion_y = g_Config.interinvader_space + g_Config.invader_size;
       invasion_direction = "left";
       _number_of_invaders_remaining = invader_rows * invader_cols;
+      _invasor_shape_offeset += _number_of_invaders_remaining;
    };
 
    var _remove_invader = (function() {
@@ -351,7 +351,7 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
             if (_is_invader_present(row, col)) {
                invader_x = invasion_x + col * invasion_cell_size;
                invader_y = invasion_y + row * invasion_cell_size;
-               invader_shape = (row * invader_cols) + col;
+               invader_shape = _invasor_shape_offeset + (row * invader_cols) + col;
                register_target(invader_x, invader_y, remove_invader_callback(row, col));
                draw_invader(invader_shape, invader_x, invader_y);
             }
@@ -458,7 +458,6 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
       }
 
       if (_number_of_invaders_remaining === 0) {
-         setup_invasion();
          _invasion_events.push("invasion_wave_cleared");
       }
    };
@@ -595,9 +594,9 @@ var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at
 
    var draw_game_over_screen = function () {
       write_text_at("Game Over", g_Config.screen_width / 4, g_Config.screen_height / 2);
-      write_text_at("Score: " + _score, g_Config.screen_width / 4, g_Config.screen_height / 2 +
+      write_text_at("Final Score: " + _score, g_Config.screen_width / 4, g_Config.screen_height / 2 +
                     g_Config.message_font_height / g_Config.pixel_size);
-      write_text_at("Wave: " + _wave, g_Config.screen_width / 4, g_Config.screen_height / 2 +
+      write_text_at("Final Wave: " + _wave, g_Config.screen_width / 4, g_Config.screen_height / 2 +
                     2 * g_Config.message_font_height / g_Config.pixel_size);
    };
 
@@ -648,15 +647,17 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
          pause_loop();
          clear_screen();
          draw_game_over_screen();
-         setup_invasion();
-         reset_player_position();
-         reset_player_lives();
+         //setup_invasion();
+         //reset_player_position();
+         //reset_player_lives();
       },
       "invasor_killed": function(start_loop, pause_loop) {
          increase_score(g_Config.invasor_kill_score);
       },
       "invasion_wave_cleared": function(start_loop, pause_loop) {
          increase_wave();
+         reset_bullets();
+         setup_invasion();
       },
 }); //with_loop
 }); //with_key_bindings
