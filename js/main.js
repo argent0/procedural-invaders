@@ -13,11 +13,15 @@ var g_Config = {
    //"player_cannon": 65024,
    "player_cannon": 32512,
    "player_bullet_position_offset": 2,
+   "player_initial_lives": 2,
+   "invasor_kill_score": 100,
    "initial_invader_cols": 7,
-   "initial_invader_rows": 5,
+   "initial_invader_rows": 4,
    "invasion_max_shoots_per_turn": 2,
    "invasion_shoot_probability": 0.1,
 };
+
+g_Config.message_font_height = g_Config.pixel_size * 2;
 
 var g_keys = {
    "left": 37,
@@ -67,7 +71,13 @@ var with_pixelated_screen = function(body, drawing_context, clear_screen, screen
       console.log("Error");
    };
 
-   body(put_pixel, clear_pixelated_screen, get_pixel);
+   var write_text_at = function(text, x, y) {
+      drawing_context().fillText(text,
+                                 x * g_Config.pixel_size,
+                                 y * g_Config.pixel_size);
+   };
+
+   body(put_pixel, clear_pixelated_screen, get_pixel, write_text_at);
 };
 
 /*
@@ -160,6 +170,11 @@ var with_bullets = function(body, put_pixel, get_pixel) {
       _bullets[bomb.id.toString()] = bomb;
    };
 
+   var reset_bullets = function () {
+      _bullets = [];
+      _bullet_id = 0;
+   };
+
    var _target_id = 0;
    var _targets = {};
 
@@ -198,7 +213,6 @@ var with_bullets = function(body, put_pixel, get_pixel) {
             bullet.y += bullet.velocity;
             if (!(_.any(_targets, function(target) {
                   if (_has_collided(bullet, target)) {
-                     console.log("Collision");
                      target.callback();
                      delete _targets[target.id];
                      delete _bullets[bullet.id];
@@ -212,21 +226,29 @@ var with_bullets = function(body, put_pixel, get_pixel) {
       });
    };
 
-   body(update_bullets, create_bullet, create_bomb, reset_targets, register_target);
+   body(update_bullets, create_bullet, create_bomb, reset_targets, register_target, reset_bullets);
 };
 
 var with_invasion = function(body, draw_invader, create_bomb, reset_targets, register_target) {
 
    var invasion_x = 0;
-   var invasion_y = g_Config.interinvader_space;
+   var invasion_y = g_Config.interinvader_space + g_Config.invader_size;
    var invasion_direction = "left";
    var invader_cols = g_Config.initial_invader_cols;
    var invader_rows = g_Config.initial_invader_rows;
    var invasion_cell_size = (g_Config.invader_size + g_Config.interinvader_space);
 
+   var _invasion_events = [];
+   
+   var invasion_events = function () {
+      var ret = _invasion_events.slice(0);
+      _invasion_events = [];
+      return [ret];
+   };
+
    var _remaining_invaders = [];
 
-   var setup_invation = function() {
+   var setup_invasion = function() {
       var col = 0;
       var row = 0;
       for(row = 0; row < invader_rows; row++) {
@@ -235,10 +257,13 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
             _remaining_invaders[row][col] = col;
          }
       }
+      invasion_x = 0;
+      invasion_y = g_Config.interinvader_space + g_Config.invader_size;
    };
 
    var _remove_invader = function(row, col) {
       _remaining_invaders[row][col] = -1;
+      _invasion_events.push("invasor_killed");
    };
 
    var _is_invader_present = function(row, col) {
@@ -250,7 +275,6 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
       var invader_x, invader_y, invader_shape;
       var remove_invader_callback = function(row, col) {
          return function() {
-            console.log("Removing invader.");
             _remove_invader(row, col);
          };
       };
@@ -357,8 +381,7 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
       }
    };
 
-   setup_invation();
-   body(draw_invasion, update_invasion);
+   body(setup_invasion, draw_invasion, update_invasion, invasion_events);
 };
 
 /*
@@ -369,13 +392,44 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
   #####  111.. 111,111,100,000,000
 */
 
-var with_player_cannon = function (body, draw_invader, create_bullet) {
+var with_player_cannon = function (body, draw_invader, create_bullet, register_target) {
 
    var player_x = Math.floor(g_Config.screen_width / 2);
    var player_y = g_Config.screen_height - g_Config.interinvader_space - g_Config.invader_size;
+   var _player_lives = g_Config.player_initial_lives;
+   var _player_events = [];
+
+   var reset_player_position = function() {
+      player_x = Math.floor(g_Config.screen_width / 2);
+      player_y = g_Config.screen_height - g_Config.interinvader_space - g_Config.invader_size;
+   };
+
+   var reset_player_lives = function() {
+      _player_lives = g_Config.player_initial_lives;
+   };
+
+   var player_events = function () {
+      var ret = _player_events.slice(0);
+      _player_events = [];
+      return [ret];
+   };
+
+   var _decrease_player_lives = function () {
+      _player_lives--;
+      if (_player_lives < 0) {
+         _player_events.push("player_loses_all_lives");
+      } else {
+         _player_events.push("player_loses_one_life");
+      }
+   };
+
+   var remaining_player_lives = function() {
+      return _player_lives;
+   };
 
    var draw_player_cannon = function() {
       draw_invader(g_Config.player_cannon, player_x, player_y);
+      register_target(player_x, player_y, _decrease_player_lives);
    };
 
    var move_left = function() {
@@ -400,32 +454,90 @@ var with_player_cannon = function (body, draw_invader, create_bullet) {
       "move_right": move_right,
    };
 
-   body(draw_player_cannon, player_action);
+   body(draw_player_cannon, player_action, remaining_player_lives, reset_player_position, reset_player_lives, player_events);
+};
+
+var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at) {
+
+   var _score = 0;
+
+   var reset_score = function () {
+      _score = 0;
+   };
+
+   var draw_ui = function() {
+      var i = 0;
+      for(i = 0; i < remaining_player_lives(); i++) {
+         draw_invader(g_Config.player_cannon,
+                      g_Config.interinvader_space + i * (g_Config.invader_size + g_Config.interinvader_space),
+                      0);
+      }
+
+      write_text_at(_score, g_Config.screen_width /2, 3);
+   };
+
+   var increase_score = function (amount) {
+      _score += amount;
+   };
+
+   body(draw_ui, increase_score, reset_score);
 };
 
 with_game_canvas( function(clear_screen, drawing_context) {
-with_pixelated_screen(function(put_pixel, clear_pixelated_screen, get_pixel) {
+with_pixelated_screen(function(put_pixel, clear_pixelated_screen, get_pixel, write_text_at) {
 with_simetric_invaders(function(draw_invader) {
-with_bullets(function(update_bullets, create_bullet, create_bomb, reset_targets, register_target) {
-with_invasion(function(draw_invasion, update_invasion) {
-with_player_cannon(function(draw_player_cannon, player_action) {
+with_bullets(function(update_bullets, create_bullet, create_bomb, reset_targets, register_target, reset_bullets) {
+with_invasion(function(setup_invasion, draw_invasion, update_invasion, invasion_events) {
+with_player_cannon(function(draw_player_cannon, player_action, remaining_player_lives, reset_player_position, reset_player_lives, player_events) {
+with_ui(function(draw_ui, increase_score, reset_score) {
 with_key_bindings(function(bind_key) {
-with_loop(100, function() {
+with_loop(100, function(interruptions, start_loop, pause_loop) {
       clear_pixelated_screen();
+      draw_invasion();        // must be before player_cannon
       draw_player_cannon();
-      draw_invasion();
       update_invasion();
       update_bullets();
+      draw_ui();
+
+      _.each(player_events(), function(player_event) {
+         if (interruptions[player_event]) {
+            interruptions[player_event](start_loop, pause_loop);
+         }
+      });
+
+      _.each(invasion_events(), function(invasion_event) {
+         if (interruptions[invasion_event]) {
+            interruptions[invasion_event](start_loop, pause_loop);
+         }
+      });
+      
    },
-   function() {
+   function() { //before the loop
+      setup_invasion();
       clear_screen();
       bind_key(g_keys.left, player_action.move_left);
       bind_key(g_keys.right, player_action.move_right);
       bind_key(g_keys.space, player_action.fire); 
-
+   },{
+      "player_loses_one_life": function(start_loop, pause_loop) {
+         reset_bullets();
+         reset_player_position();
+      },
+      "player_loses_all_lives": function(start_loop, pause_loop) {
+         pause_loop();
+         clear_screen();
+         write_text_at("Game Over", g_Config.screen_width / 4, g_Config.screen_height / 2);
+         setup_invasion();
+         reset_player_position();
+         reset_player_lives();
+      },
+      "invasor_killed": function(start_loop, pause_loop) {
+         increase_score(g_Config.invasor_kill_score);
+      },
 }); //with_loop
 }); //with_key_bindings
-}, draw_invader, create_bullet); //with_player_cannon
+}, draw_invader, remaining_player_lives, write_text_at); //with_ui
+}, draw_invader, create_bullet, register_target); //with_player_cannon
 }, draw_invader, create_bomb, reset_targets, register_target); //with_invasion
 }, put_pixel, get_pixel); //with_bullets
 }, put_pixel);}, drawing_context, clear_screen, g_Config.screen_width, g_Config.screen_height); //with_pixelated_screen

@@ -1,16 +1,32 @@
-var with_loop = function (interval, loop_body, before) {
+var with_loop = function (interval, loop_body, before, interruptions) {
+   /* Interruptions
+    * {"event": callback }
+    */
+
+   var _timeout_id = 0;
+   var _loop_body = loop_body;
+   var _paused = false;
+
+   var pause_loop = function() {
+      console.log(_timeout_id);
+      window.clearTimeout(_timeout_id);
+      _paused = true;
+   };
 
    var advance_step = function(){
-      loop_body();
+      _loop_body(interruptions, start_loop, pause_loop);
    };
 
-   var continue_loop = function() {
+   var start_loop = function() {
       //Function.prototype.call(after);
       advance_step();
-         window.setTimeout(continue_loop, interval);
+      if (!_paused)  {
+         _timeout_id = window.setTimeout(start_loop, interval);
+      }
    };
 
-   continue_loop();
-   before(advance_step, continue_loop);
+
+   before();
+   start_loop();
 };
 // vim: expandtab
