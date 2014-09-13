@@ -21,6 +21,8 @@ var g_Config = {
    "invasion_max_shoots_per_turn": 2,
    "invasion_shoot_probability": 0.1,
    "invasion_inter_movement_turns": 1,
+   "eplosion_density": 0.5,
+   "explosion_life_turns": 2,
 };
 
 g_Config.message_font_height = g_Config.pixel_size * 2;
@@ -154,6 +156,45 @@ var with_key_bindings = function(body) {
 };
 
 var with_bullets = function(body, put_pixel, get_pixel) {
+   var _explosions = {};
+   var _explosion_id = 0;
+
+   var _Explosion = function(explosion_x, explosion_y) {
+
+
+      var self = this;
+
+      self.id = _explosion_id;
+      _explosion_id += 1;
+
+      self.age = 0;
+
+      self.draw = function() {
+         self.age += 1;
+         var pixel_x;
+         var pixel_y;
+
+
+         for(pixel_x = explosion_x + 1;
+             pixel_x < explosion_x + 1 + g_Config.invader_size - 1;
+             pixel_x++) {
+               for(pixel_y = explosion_y + 1;
+                   pixel_y < explosion_y + 1 + g_Config.invader_size - 1;
+                  pixel_y++) {
+                  var dice = Math.random();
+                  if (dice > g_Config.eplosion_density) {
+                     put_pixel(pixel_x, pixel_y);
+                  }
+               }
+         }
+      };
+   };
+
+   var _create_explosion = function(x, y) {
+      var explosion = new _Explosion(x, y);
+      _explosions[_explosion_id.toString()] = explosion;
+   };
+
    var _bullets = {};
    var _bullet_id = 0;
 
@@ -221,6 +262,7 @@ var with_bullets = function(body, put_pixel, get_pixel) {
             bullet.y += bullet.velocity;
             if (!(_.any(_targets, function(target) {
                   if (_has_collided(bullet, target)) {
+                     _create_explosion(target.x, target.y);
                      target.callback();
                      delete _targets[target.id];
                      delete _bullets[bullet.id];
@@ -230,6 +272,14 @@ var with_bullets = function(body, put_pixel, get_pixel) {
                }))) {
                   put_pixel(bullet.x, bullet.y);
             }
+         }
+      });
+
+      _.each(_explosions, function(explosion) {
+         if (explosion.age > g_Config.explosion_life_turns) {
+            delete _explosions[explosion.id.toString()];
+         } else {
+            explosion.draw();
          }
       });
    };
