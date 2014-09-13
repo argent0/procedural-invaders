@@ -4,6 +4,8 @@ with_loop: true,
 */
 
 var g_Config = {
+   "enable_color": true,
+   "mono_color": "#fff",
 	"screen_width": 80,
 	"screen_height": 50,
 	"pixel_size": 8,
@@ -24,6 +26,8 @@ var g_Config = {
    "invasion_inter_movement_turns": 1,
    "eplosion_density": 0.5,
    "explosion_life_turns": 2,
+   "bullet_color": "#ffff00",
+   "explosion_color": "#ff0000",
 };
 
 g_Config.message_font_height = g_Config.pixel_size * 2;
@@ -62,18 +66,35 @@ var with_pixelated_screen = function(body, drawing_context, clear_screen, screen
       return (x_in_range && y_in_range);
    };
 
-   var put_pixel = function(x, y) {
-      if (_pixel_in_screen(x,y)) {
-         drawing_context().fillStyle = "#fff";
-         drawing_context().fillRect(
-            x * g_Config.pixel_size,
-            y * g_Config.pixel_size,
-            g_Config.pixel_size,
-            g_Config.pixel_size);
+   var put_pixel = (function () {
+      if (g_Config.enable_color) {
+         return function(x, y, color) {
+            if (_pixel_in_screen(x,y)) {
+               drawing_context().fillStyle = color;
+               drawing_context().fillRect(
+                  x * g_Config.pixel_size,
+                  y * g_Config.pixel_size,
+                  g_Config.pixel_size,
+                  g_Config.pixel_size);
 
-            _video_memory[x][y] = true;
+                  _video_memory[x][y] = true;
+            }
+         };
+      } else {
+         return function(x, y, color) {
+            if (_pixel_in_screen(x,y)) {
+               drawing_context().fillStyle = "#fff";
+               drawing_context().fillRect(
+                  x * g_Config.pixel_size,
+                  y * g_Config.pixel_size,
+                  g_Config.pixel_size,
+                  g_Config.pixel_size);
+
+                  _video_memory[x][y] = true;
+            }
+         };
       }
-   };
+   }());
 
    var get_pixel = function(x, y) {
       if (_pixel_in_screen(x,y)) {
@@ -83,6 +104,7 @@ var with_pixelated_screen = function(body, drawing_context, clear_screen, screen
    };
 
    var write_text_at = function(text, x, y) {
+      drawing_context().fillStyle = "#fff";
       drawing_context().fillText(text,
                                  x * g_Config.pixel_size,
                                  y * g_Config.pixel_size);
@@ -112,6 +134,17 @@ with_simetric_invaders = function(body, put_pixel) {
       return seed_str;
    });
 
+   var _invader_color = _.memoize( function(seed) {
+      var color_parts = _.sample(["f0","f0","f0", "00", "00", "00"], 3);
+      var final_color_string = "#" + color_parts.join("");
+      while ((final_color_string.indexOf("f") === -1) || (final_color_string.indexOf("0") === -1)) {
+         color_parts = _.sample(["f0","f0","f0", "00", "00", "00"], 3);
+         final_color_string = "#" + color_parts.join("");
+      }
+      console.log(final_color_string);
+      return final_color_string;
+   });
+
    var draw_invader = function(seed, invader_x, invader_y) {
       
       var digit_index = 0;
@@ -129,8 +162,14 @@ with_simetric_invaders = function(body, put_pixel) {
             var x = digit_index % (g_Config.invader_size - g_Config.invader_simetric_width);
             var y = Math.floor(digit_index / (g_Config.invader_size -g_Config.invader_simetric_width));
             var reflected_x = g_Config.invader_size - x - 1;
-            put_pixel(invader_x + x, invader_y + y);
-            put_pixel(invader_x + reflected_x, invader_y + y);
+            var invader_color;
+            if (g_Config.enable_color) {
+               invader_color = _invader_color(seed);
+            } else {
+               invader_color = g_Config.mono_color;
+            }
+            put_pixel(invader_x + x, invader_y + y, invader_color);
+            put_pixel(invader_x + reflected_x, invader_y + y, invader_color);
          }
       }
    };
@@ -184,7 +223,7 @@ var with_bullets = function(body, put_pixel, get_pixel) {
                   pixel_y++) {
                   var dice = Math.random();
                   if (dice > g_Config.eplosion_density) {
-                     put_pixel(pixel_x, pixel_y);
+                     put_pixel(pixel_x, pixel_y, g_Config.explosion_color);
                   }
                }
          }
@@ -271,7 +310,7 @@ var with_bullets = function(body, put_pixel, get_pixel) {
                   }
                   return false;
                }))) {
-                  put_pixel(bullet.x, bullet.y);
+                  put_pixel(bullet.x, bullet.y, g_Config.bullet_color);
             }
          }
       });
