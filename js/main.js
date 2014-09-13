@@ -16,6 +16,7 @@ var g_Config = {
    "player_lives_reduction": 1,
    "player_inter_shoot_turns": 10,
    "invasor_kill_score": 100,
+   "invasor_kills_for_life_extensions": 2,
    "initial_invader_cols": 7,
    "initial_invader_rows": 4,
    "invasion_max_shoots_per_turn": 2,
@@ -513,6 +514,14 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
       };
    }());
 
+   var increase_player_lives = (function() {
+      var life_extended_sound = sound('art/sound/life-extension.ogg');
+      return function () {
+         _player_lives += g_Config.player_lives_reduction;
+         life_extended_sound();
+      };
+   }());
+
    var remaining_player_lives = function() {
       return _player_lives;
    };
@@ -558,13 +567,15 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
       "move_right": move_right,
    };
 
-   body(draw_player_cannon, player_action, remaining_player_lives, reset_player_position, reset_player_lives, player_events);
+   body(draw_player_cannon, player_action, remaining_player_lives, reset_player_position, reset_player_lives, player_events,
+       increase_player_lives);
 };
 
-var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at) {
+var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at, increase_player_lives) {
 
    var _score = 0;
    var _wave = 1;
+   var _life_extensions = 1;
 
    var reset_score = function () {
       _score = 0;
@@ -591,6 +602,14 @@ var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at
 
    var increase_score = function (amount) {
       _score += amount;
+      var extension_boundary = Math.pow(g_Config.invasor_kills_for_life_extensions, _life_extensions) * g_Config.invasor_kill_score;
+      console.log(extension_boundary);
+      if ((_score > extension_boundary - 1) && (_score < extension_boundary + 1)) {
+         if (remaining_player_lives() < g_Config.player_initial_lives) {
+            increase_player_lives();
+         }
+         _life_extensions += 1;
+      }
    };
 
    var increase_wave = function () {
@@ -613,7 +632,9 @@ with_pixelated_screen(function(put_pixel, clear_pixelated_screen, get_pixel, wri
 with_simetric_invaders(function(draw_invader) {
 with_bullets(function(update_bullets, create_bullet, create_bomb, reset_targets, register_target, reset_bullets) {
 with_invasion(function(setup_invasion, draw_invasion, update_invasion, invasion_events) {
-with_player_cannon(function(draw_player_cannon, player_action, remaining_player_lives, reset_player_position, reset_player_lives, player_events) {
+with_player_cannon(function(draw_player_cannon, player_action,
+                            remaining_player_lives, reset_player_position,
+                            reset_player_lives, player_events, increase_player_lives) {
 with_ui(function(draw_ui, increase_score, reset_score, draw_game_over_screen, increase_wave) {
 with_key_bindings(function(bind_key) {
 with_loop(100, function(interruptions, start_loop, pause_loop) {
@@ -666,7 +687,7 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
       },
 }); //with_loop
 }); //with_key_bindings
-}, draw_invader, remaining_player_lives, write_text_at); //with_ui
+}, draw_invader, remaining_player_lives, write_text_at, increase_player_lives); //with_ui
 }, draw_invader, create_bullet, register_target); //with_player_cannon
 }, draw_invader, create_bomb, reset_targets, register_target); //with_invasion
 }, put_pixel, get_pixel); //with_bullets
