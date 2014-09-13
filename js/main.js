@@ -13,6 +13,7 @@ var g_Config = {
    "player_cannon": 32512,
    "player_bullet_position_offset": 2,
    "player_initial_lives": 3,
+   "player_lives_reduction": 1,
    "player_inter_shoot_turns": 10,
    "invasor_kill_score": 100,
    "initial_invader_cols": 7,
@@ -351,6 +352,10 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
             if (_is_invader_present(row, col)) {
                invader_x = invasion_x + col * invasion_cell_size;
                invader_y = invasion_y + row * invasion_cell_size;
+               if ((invader_y + g_Config.invader_size) > g_Config.screen_height - g_Config.interinvader_space - 3) {
+                  _invasion_events.push("game_over");
+                  break;
+               }
                invader_shape = _invasor_shape_offeset + (row * invader_cols) + col;
                register_target(invader_x, invader_y, remove_invader_callback(row, col));
                draw_invader(invader_shape, invader_x, invader_y);
@@ -498,10 +503,10 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
    var _decrease_player_lives = (function() {
       var explosion_sound = sound('art/sound/player-explosion.ogg');
       return function () {
-         _player_lives--;
+         _player_lives -= g_Config.player_lives_reduction;
          explosion_sound();
          if (_player_lives < 0) {
-            _player_events.push("player_loses_all_lives");
+            _player_events.push("game_over");
          } else {
             _player_events.push("player_loses_one_life");
          }
@@ -643,7 +648,7 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
          reset_bullets();
          reset_player_position();
       },
-      "player_loses_all_lives": function(start_loop, pause_loop) {
+      "game_over": function(start_loop, pause_loop) {
          pause_loop();
          clear_screen();
          draw_game_over_screen();
