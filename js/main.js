@@ -120,11 +120,28 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
          console.log("Error");
       };
 
+      var _text_lines = {};
+      var _text_line_id = 0;
+
+      var _Text_line = function(text, col, row) {
+         this.text = text;
+         this.row = row;
+         this.col = col;
+         this.id = _text_line_id;
+         _text_line_id += 1;
+
+         this.draw = function() {
+            drawing_context().fillStyle = "#fff";
+            drawing_context().fillText(text,
+                                       col * _pixel_width,
+                                       row * _pixel_height);
+         };
+      };
+
       self.write_text_at = function(text, x, y) {
-         drawing_context().fillStyle = "#fff";
-         drawing_context().fillText(text,
-                                    x * _pixel_width,
-                                    y * _pixel_height);
+         var text_line = new _Text_line(text, x, y);
+         _text_lines[text_line.id.toString()] = text_line;
+         text_line.draw();
       };
 
       self.go_full_screen = function () {
@@ -251,7 +268,6 @@ var with_bullets = function(body, put_pixel, get_pixel) {
    var _explosion_id = 0;
 
    var _Explosion = function(explosion_x, explosion_y) {
-
 
       var self = this;
 
