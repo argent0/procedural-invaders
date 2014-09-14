@@ -26,7 +26,7 @@ var with_loop = function (interval, loop_body, before, interruptions) {
    };
 
 
-   before();
-   start_loop();
+   before(start_loop);
+   //start_loop();
 };
 // vim: expandtab

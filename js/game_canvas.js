@@ -21,15 +21,15 @@ var with_game_canvas = function(body) {
       if (!context) {
          throw "Couldn't find context.";
       }
-      context.font = g_Config.message_font_height + 'px game-font';//40px Arial';
+      //context.font = g_Config.message_font_height + 'px game-font';//40px Arial';
       return context;
    });
 
    var clear_screen = function () {
-      drawing_context().clearRect(0, 0, g_Config.canvas_width, g_Config.canvas_height);
+      drawing_context().clearRect(0, 0, canvas().width, canvas().height);
    };
 
-   body(clear_screen, drawing_context);
+   body(clear_screen, drawing_context, canvas);
 
 };
 // vim: expandtab

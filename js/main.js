@@ -38,6 +38,8 @@ var g_keys = {
    "left": 37,
    "right": 39,
    "space": 32,
+   "letter_r": 82,
+   "letter_f": 70,
 };
 
 var sound = function(filename) {
@@ -47,70 +49,120 @@ var sound = function(filename) {
    };
 };
 
-var with_pixelated_screen = function(body, drawing_context, clear_screen, screen_width, screen_height) {
+var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen, screen_width, screen_height) {
 
-   var _video_memory = []; 
-   var _video_col = 0;
+   var _Pixelated_Screen = function() {
 
-   var clear_pixelated_screen = function() {
-      clear_screen();
+      var self = this;
+      var _video_memory = []; 
+      var _video_col = 0;
+
+      canvas().width = window.innerWidth;
+      canvas().height = window.innerHeight;
+
+      var _pixel_width = Math.floor(canvas().width / screen_width);
+      var _pixel_height = Math.floor(canvas().height / screen_height);
+
+      drawing_context().font = _pixel_height * 1.5 + 'px game-font';
+
       for(_video_col=0; _video_col < screen_width; _video_col++) {
          _video_memory[_video_col] = [];
       }
+
+      var _pixel_in_screen = function(x, y) {
+         var x_in_range = (x >= 0) && (x < screen_width);
+         var y_in_range = (y >= 0) && (y < screen_height);
+
+         return (x_in_range && y_in_range);
+      };
+
+      self.clear = function() {
+         clear_screen();
+         for(_video_col=0; _video_col < screen_width; _video_col++) {
+            _video_memory[_video_col] = [];
+         }
+      };
+
+      self.put_pixel = (function () {
+         if (g_Config.enable_color) {
+            return function(x, y, color) {
+               if (_pixel_in_screen(x,y)) {
+                  drawing_context().fillStyle = color;
+                  drawing_context().fillRect(
+                     x * _pixel_width,
+                     y * _pixel_height,
+                     _pixel_width,
+                     _pixel_height);
+
+                     _video_memory[x][y] = true;
+               }
+            };
+         } else {
+            return function(x, y, color) {
+               if (_pixel_in_screen(x,y)) {
+                  drawing_context().fillStyle = "#fff";
+                  drawing_context().fillRect(
+                     x * _pixel_width,
+                     y * _pixel_height,
+                     _pixel_width,
+                     _pixel_height);
+
+                     _video_memory[x][y] = true;
+               }
+            };
+         }
+      }());
+
+      self.get_pixel = function(x, y) {
+         if (_pixel_in_screen(x,y)) {
+            return (_video_memory[x][y]);
+         }
+         console.log("Error");
+      };
+
+      self.write_text_at = function(text, x, y) {
+         drawing_context().fillStyle = "#fff";
+         drawing_context().fillText(text,
+                                    x * _pixel_width,
+                                    y * _pixel_height);
+      };
+
+      self.go_full_screen = function () {
+         if(canvas().requestFullScreen) {
+            canvas().requestFullScreen();
+         }
+         else if(canvas().webkitRequestFullScreen) {
+            canvas().webkitRequestFullScreen();
+         }
+         else if(canvas().mozRequestFullScreen) {
+            canvas().mozRequestFullScreen();
+         }
+      };
+
+      self.resize_screen = function () {
+         canvas().width = window.innerWidth;
+         canvas().height = window.innerHeight;
+         _pixel_width = Math.floor(canvas().width / screen_width);
+         _pixel_height = Math.floor(canvas().height / screen_height);
+         drawing_context().font = _pixel_height * 1 + 'px game-font';//40px Arial';
+      };
+
+      self.width = function() {
+         return screen_width;
+      };
+
+      self.height = function() {
+         return screen_height;
+      };
+
    };
 
-   var _pixel_in_screen = function(x, y) {
-      var x_in_range = (x > 0) && (x < screen_width);
-      var y_in_range = (y > 0) && (y < screen_height);
+   pixelated_screen = new _Pixelated_Screen();
 
-      return (x_in_range && y_in_range);
-   };
+   window.addEventListener('resize', pixelated_screen.resize_screen, false);
+   window.go_full_screen = pixelated_screen.go_full_screen;
 
-   var put_pixel = (function () {
-      if (g_Config.enable_color) {
-         return function(x, y, color) {
-            if (_pixel_in_screen(x,y)) {
-               drawing_context().fillStyle = color;
-               drawing_context().fillRect(
-                  x * g_Config.pixel_size,
-                  y * g_Config.pixel_size,
-                  g_Config.pixel_size,
-                  g_Config.pixel_size);
-
-                  _video_memory[x][y] = true;
-            }
-         };
-      } else {
-         return function(x, y, color) {
-            if (_pixel_in_screen(x,y)) {
-               drawing_context().fillStyle = "#fff";
-               drawing_context().fillRect(
-                  x * g_Config.pixel_size,
-                  y * g_Config.pixel_size,
-                  g_Config.pixel_size,
-                  g_Config.pixel_size);
-
-                  _video_memory[x][y] = true;
-            }
-         };
-      }
-   }());
-
-   var get_pixel = function(x, y) {
-      if (_pixel_in_screen(x,y)) {
-         return (_video_memory[x][y]);
-      }
-      console.log("Error");
-   };
-
-   var write_text_at = function(text, x, y) {
-      drawing_context().fillStyle = "#fff";
-      drawing_context().fillText(text,
-                                 x * g_Config.pixel_size,
-                                 y * g_Config.pixel_size);
-   };
-
-   body(put_pixel, clear_pixelated_screen, get_pixel, write_text_at);
+   body(pixelated_screen);
 };
 
 /*
@@ -141,7 +193,6 @@ with_simetric_invaders = function(body, put_pixel) {
          color_parts = _.sample(["f0","f0","f0", "00", "00", "00"], 3);
          final_color_string = "#" + color_parts.join("");
       }
-      console.log(final_color_string);
       return final_color_string;
    });
 
@@ -610,7 +661,7 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
        increase_player_lives);
 };
 
-var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at, increase_player_lives) {
+var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_lives, increase_player_lives) {
 
    var _score = 0;
    var _wave = 1;
@@ -628,12 +679,12 @@ var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at
                       0);
       }
 
-      write_text_at("Score", g_Config.screen_width /2, 3);
-      write_text_at(_score, g_Config.screen_width /2, 3 +
+      pixelated_screen.write_text_at("Score", g_Config.screen_width /2, 3);
+      pixelated_screen.write_text_at(_score, g_Config.screen_width /2, 3 +
                     g_Config.message_font_height / g_Config.pixel_size);
 
-      write_text_at("Wave", g_Config.screen_width /4*3, 3);
-      write_text_at(_wave, g_Config.screen_width /4*3, 3 +
+      pixelated_screen.write_text_at("Wave", g_Config.screen_width /4*3, 3);
+      pixelated_screen.write_text_at(_wave, g_Config.screen_width /4*3, 3 +
                     g_Config.message_font_height / g_Config.pixel_size);
 
       //write_text_at(_score, g_Config.screen_width /2, 3);
@@ -655,29 +706,60 @@ var with_ui = function(body, draw_invader, remaining_player_lives, write_text_at
       _wave += 1;
    };
 
-   var draw_game_over_screen = function () {
-      write_text_at("Game Over", g_Config.screen_width / 4, g_Config.screen_height / 2);
-      write_text_at("Final Score: " + _score, g_Config.screen_width / 4, g_Config.screen_height / 2 +
+   var draw_game_restart_screen = function (restart_message) {
+      pixelated_screen.clear();
+      pixelated_screen.write_text_at(restart_message, g_Config.screen_width / 4, g_Config.screen_height / 2);
+      pixelated_screen.write_text_at("Final Score: " + _score, g_Config.screen_width / 4, g_Config.screen_height / 2 +
                     g_Config.message_font_height / g_Config.pixel_size);
-      write_text_at("Final Wave: " + _wave, g_Config.screen_width / 4, g_Config.screen_height / 2 +
+      pixelated_screen.write_text_at("Final Wave: " + _wave, g_Config.screen_width / 4, g_Config.screen_height / 2 +
                     2 * g_Config.message_font_height / g_Config.pixel_size);
    };
 
-   body(draw_ui, increase_score, reset_score, draw_game_over_screen, increase_wave);
+   var draw_splash_screen = function() {
+      pixelated_screen.clear();
+      var lines = [
+         "***......................................................",
+         ".*....................................*..................",
+         ".*.......................................................",
+         ".*...*.***...*...*...****....****....**.....****...*.***.",
+         ".*...**...*..*...*.......*..*....*....*....*....*..**...*",
+         ".*...*....*..*...*...*****...**.......*....*....*..*....*",
+         ".*...*....*...*.*...*....*.....**.....*....*....*..*....*",
+         ".*...*....*...*.*...*...**..*....*....*....*....*..*....*",
+         "***..*....*....*.....***.*...****...*****...****...*....*",
+      ];
+      var x_start = Math.floor((pixelated_screen.width() - lines[0].length) / 2);
+      var y = 20;
+      _.each(lines, function(line) {
+         var x = x_start; 
+         _.each(line, function(pixel) {
+            if(pixel === "*") {
+               pixelated_screen.put_pixel(x, y, "#fff");
+            }
+            x += 1;
+         });
+         y += 1;
+      });
+
+      pixelated_screen.write_text_at("The game everyone should be talking about!",
+                    g_Config.screen_width / 4, g_Config.screen_height / 4 * 3);
+   };
+
+   body(draw_ui, increase_score, reset_score, draw_game_restart_screen, increase_wave, draw_splash_screen);
 };
 
-with_game_canvas( function(clear_screen, drawing_context) {
-with_pixelated_screen(function(put_pixel, clear_pixelated_screen, get_pixel, write_text_at) {
+with_game_canvas( function(clear_screen, drawing_context, canvas) {
+with_pixelated_screen(function(pixelated_screen) {
 with_simetric_invaders(function(draw_invader) {
 with_bullets(function(update_bullets, create_bullet, create_bomb, reset_targets, register_target, reset_bullets) {
 with_invasion(function(setup_invasion, draw_invasion, update_invasion, invasion_events) {
 with_player_cannon(function(draw_player_cannon, player_action,
                             remaining_player_lives, reset_player_position,
                             reset_player_lives, player_events, increase_player_lives) {
-with_ui(function(draw_ui, increase_score, reset_score, draw_game_over_screen, increase_wave) {
+with_ui(function(draw_ui, increase_score, reset_score, draw_game_restart_screen, increase_wave, draw_splash_screen) {
 with_key_bindings(function(bind_key) {
 with_loop(100, function(interruptions, start_loop, pause_loop) {
-      clear_pixelated_screen();
+      pixelated_screen.clear();
       draw_invasion();        // must be before player_cannon
       draw_player_cannon();
       update_invasion();
@@ -697,12 +779,14 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
       });
       
    },
-   function() { //before the loop
-      setup_invasion();
-      clear_screen();
+   function(start_loop) { //before the loop
+      pixelated_screen.clear();
+      draw_splash_screen();
       bind_key(g_keys.left, player_action.move_left);
       bind_key(g_keys.right, player_action.move_right);
       bind_key(g_keys.space, player_action.fire); 
+      bind_key(g_keys.letter_f, go_full_screen); 
+      bind_key(g_keys.letter_r, function() { setup_invasion(); start_loop(); });
    },{
       "player_loses_one_life": function(start_loop, pause_loop) {
          reset_bullets();
@@ -710,8 +794,8 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
       },
       "game_over": function(start_loop, pause_loop) {
          pause_loop();
-         clear_screen();
-         draw_game_over_screen();
+         //pixelated_screen.clear();
+         draw_game_restart_screen("Game over!");
          //setup_invasion();
          //reset_player_position();
          //reset_player_lives();
@@ -726,19 +810,17 @@ with_loop(100, function(interruptions, start_loop, pause_loop) {
       },
 }); //with_loop
 }); //with_key_bindings
-}, draw_invader, remaining_player_lives, write_text_at, increase_player_lives); //with_ui
+}, pixelated_screen, draw_invader, remaining_player_lives, increase_player_lives); //with_ui
 }, draw_invader, create_bullet, register_target); //with_player_cannon
 }, draw_invader, create_bomb, reset_targets, register_target); //with_invasion
-}, put_pixel, get_pixel); //with_bullets
-}, put_pixel);}, drawing_context, clear_screen, g_Config.screen_width, g_Config.screen_height); //with_pixelated_screen
-});
+}, pixelated_screen.put_pixel, pixelated_screen.get_pixel); //with_bullets
+}, pixelated_screen.put_pixel); //with_simetric_invaders
+}, canvas, drawing_context, clear_screen, g_Config.screen_width, g_Config.screen_height); //with_pixelated_screen
+}); //with_game_canvas
 
 
 /* Ein Klein Todo
- * The Invasion
- * The Invasion fires
- * The player can shoot the invasion
- * The defenses
+ * Make an start screen
  */
 
 
