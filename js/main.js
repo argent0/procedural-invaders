@@ -81,6 +81,8 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
          for(_video_col=0; _video_col < screen_width; _video_col++) {
             _video_memory[_video_col] = [];
          }
+         _text_lines = {};
+         _text_line_id = 0;
       };
 
       self.put_pixel = (function () {
