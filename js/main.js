@@ -42,6 +42,16 @@ var g_keys = {
    "letter_f": 70,
 };
 
+var supports_html5_storage = function () {
+   try {
+      return 'localStorage' in window && window.localStorage !== null;
+   } catch (e) {
+      return false;
+   }
+};
+
+g_Config.has_local_storage = supports_html5_storage();
+
 var sound = function(filename) {
    var snd = new Audio(filename);
    return function () {
@@ -182,6 +192,7 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
             });
          });
       };
+
 
       self.width = function() {
          return screen_width;
@@ -748,6 +759,16 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
                     g_Config.message_font_height / g_Config.pixel_size);
       pixelated_screen.write_text_at("Final Wave: " + _wave, g_Config.screen_width / 4, g_Config.screen_height / 2 +
                     2 * g_Config.message_font_height / g_Config.pixel_size);
+      if (g_Config.has_local_storage) {
+         var max_score = window.localStorage.getItem("max_score");
+         if ( max_score !== null ) {
+            if (_score > max_score) {
+               window.localStorage.setItem("max_score", _score);
+            }
+         } else {
+            window.localStorage.setItem("max_score", _score);
+         }
+      }
    };
 
    var draw_splash_screen = function() {
@@ -778,6 +799,16 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
 
       pixelated_screen.write_text_at("The game everyone should be talking about!",
                     g_Config.screen_width / 4, g_Config.screen_height / 4 * 3);
+
+      if (g_Config.has_local_storage) {
+         var max_score = window.localStorage.getItem("max_score");
+         if ( max_score !== null ) {
+            pixelated_screen.write_text_at("Your max Score: " + max_score,
+                                           g_Config.screen_width / 4, g_Config.screen_height / 4 * 3 + 2);
+         } else {
+            console.log("No recorded max score");
+         }
+      }
    };
 
    body(draw_ui, increase_score, reset_score, draw_game_restart_screen, increase_wave, draw_splash_screen);
