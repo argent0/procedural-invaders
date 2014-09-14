@@ -96,20 +96,21 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
                      _pixel_width,
                      _pixel_height);
 
-                     _video_memory[x][y] = true;
+                     _video_memory[x][y] = color;
                }
             };
          } else {
-            return function(x, y, color) {
+            return function(x, y) {
+               var color = "#fff";
                if (_pixel_in_screen(x,y)) {
-                  drawing_context().fillStyle = "#fff";
+                  drawing_context().fillStyle = color;
                   drawing_context().fillRect(
                      x * _pixel_width,
                      y * _pixel_height,
                      _pixel_width,
                      _pixel_height);
 
-                     _video_memory[x][y] = true;
+                     _video_memory[x][y] = color;
                }
             };
          }
@@ -158,12 +159,28 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
          }
       };
 
-      self.resize_screen = function () {
+      self.redraw = function() {
+         console.log("Redraw");
          canvas().width = window.innerWidth;
          canvas().height = window.innerHeight;
          _pixel_width = Math.floor(canvas().width / screen_width);
          _pixel_height = Math.floor(canvas().height / screen_height);
          drawing_context().font = _pixel_height * 1 + 'px game-font';//40px Arial';
+
+         _.each(_text_lines, function(text_line) {
+            text_line.draw();
+         });
+
+         _.each(_video_memory, function(pixel_row, x) {
+            _.each(pixel_row, function(color, y) {
+               drawing_context().fillStyle = color;
+                  drawing_context().fillRect(
+                     x * _pixel_width,
+                     y * _pixel_height,
+                     _pixel_width,
+                     _pixel_height);
+            });
+         });
       };
 
       self.width = function() {
@@ -178,7 +195,7 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
 
    pixelated_screen = new _Pixelated_Screen();
 
-   window.addEventListener('resize', pixelated_screen.resize_screen, false);
+   window.addEventListener('resize', pixelated_screen.redraw, false);
    window.go_full_screen = pixelated_screen.go_full_screen;
 
    body(pixelated_screen);
