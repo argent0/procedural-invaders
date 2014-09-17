@@ -19,6 +19,9 @@ canvas {
 	z-index: 2;
 	position:absolute;
 	bottom: 0px;
+}
+
+#joystick {
 	visibility: hidden;
 }
 
