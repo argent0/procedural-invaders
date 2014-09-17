@@ -14,7 +14,7 @@ var g_Config = {
    "interinvader_space": 2,
    "player_cannon": 32512,
    "player_bullet_position_offset": 2,
-   "player_initial_lives": 0,
+   "player_initial_lives": 3,
    "player_lives_reduction": 1,
    "player_inter_shoot_turns": 10,
    "invasor_kill_score": 100,
@@ -282,15 +282,22 @@ var with_key_bindings = function(body) {
       bindings[key_code.toString()] = callback;
    };
 
-   $(document.body).unbind("keydown"); // Just in case
-   $(document.body).keydown( function(event) {
-      var key_code = event.keyCode.toString();
-      if (bindings[key_code]) {
-         bindings[key_code]();
-      }
-   });
 
-   body(bind_key);
+
+   var rebind = function() {
+      bindings = {};
+      $(document.body).unbind("keydown"); // Just in case
+      $(document.body).keydown( function(event) {
+         var key_code = event.keyCode.toString();
+         if (bindings[key_code]) {
+            bindings[key_code]();
+         }
+      });
+   };
+
+   rebind();
+
+   body(bind_key, rebind);
 };
 
 var with_bullets = function(body, put_pixel, get_pixel) {
@@ -723,11 +730,17 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
       _wave = 0;
    };
 
+   $("#left").on("click", player_action.move_left);
+   $("#right").on("click", player_action.move_right);
+   $("#fire").on("click", player_action.fire);
+   $("#start").on("click", function() {
+      var r_keydown_event = jQuery.Event( "keydown", { keyCode: g_keys.letter_r } );
+      $(document.body).trigger(r_keydown_event);
+   });
+
    var draw_on_screen_controls = function() {
-      $("#controls").css("visibility", "visible");
-      $("#left").on("click", player_action.move_left);
-      $("#right").on("click", player_action.move_right);
-      $("#fire").on("click", player_action.fire);
+      $("#start-controls").css("visibility", "hidden");
+      $("#joystick").css("visibility", "visible");
    };
 
    var draw_ui = function() {
@@ -767,6 +780,9 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
    };
 
    var draw_game_restart_screen = function (restart_message) {
+      $("#start-controls").css("visibility", "visible");
+      $("#joystick").css("visibility", "hidden");
+
       pixelated_screen.clear();
       pixelated_screen.write_text_at(restart_message, g_Config.screen_width / 4, g_Config.screen_height / 2);
       pixelated_screen.write_text_at("Final Score: " + _score, g_Config.screen_width / 4, g_Config.screen_height / 2 +
@@ -826,6 +842,9 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
             console.log("No recorded max score");
          }
       }
+
+      //$("#start").on("click", function() { reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop(); });
+
    };
 
    body(draw_ui, increase_score, reset_score, draw_game_restart_screen, increase_wave, draw_splash_screen, draw_on_screen_controls);
@@ -841,7 +860,7 @@ with_player_cannon(function(draw_player_cannon, player_action,
                             reset_player_lives, player_events, increase_player_lives) {
 with_ui(function(draw_ui, increase_score, reset_score, draw_game_restart_screen, increase_wave, draw_splash_screen,
                 draw_on_screen_controls) {
-with_key_bindings(function(bind_key) {
+with_key_bindings(function(bind_key, rebind) {
 with_loop(100, function(interruptions, start_loop, pause_loop, restart_loop) {
       pixelated_screen.clear();
       draw_invasion();        // must be before player_cannon
@@ -869,11 +888,20 @@ with_loop(100, function(interruptions, start_loop, pause_loop, restart_loop) {
       reset_explosions();
       pixelated_screen.clear();
       draw_splash_screen();
+      rebind();
       bind_key(g_keys.left, player_action.move_left);
       bind_key(g_keys.right, player_action.move_right);
       bind_key(g_keys.space, player_action.fire); 
       bind_key(g_keys.letter_f, go_full_screen); 
-      bind_key(g_keys.letter_r, function() { reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop(); });
+      bind_key(g_keys.letter_r, _.throttle(
+         function() {
+         console.log("Starting");
+         reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop();
+      }, 1000, {leading: false, trailing: false}));
+      bind_key(g_keys.letter_r, function() {
+         console.log("Starting");
+         reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop();
+      });
    },{
       "player_loses_one_life": function(start_loop, pause_loop, restart_loop) {
          reset_bullets();
@@ -881,6 +909,7 @@ with_loop(100, function(interruptions, start_loop, pause_loop, restart_loop) {
       },
       "game_over": function(start_loop, pause_loop, restart_loop) {
          pause_loop();
+         $(document.body).unbind("keydown"); // Just in case
          draw_game_restart_screen("Game over!");
          window.setTimeout(restart_loop, 2000);
       },
