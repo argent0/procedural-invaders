@@ -738,6 +738,8 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
       $(document.body).trigger(r_keydown_event);
    });
 
+   $("#full-screen").on("click", function() { window.go_full_screen(); });
+
    var draw_on_screen_controls = function() {
       $("#start-controls").css("visibility", "hidden");
       $("#joystick").css("visibility", "visible");
