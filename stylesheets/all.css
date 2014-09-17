@@ -21,6 +21,10 @@ canvas {
 	bottom: 0px;
 }
 
+#full-screen {
+	float: right;
+}
+
 #joystick {
 	visibility: hidden;
 }
