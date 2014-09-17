@@ -730,9 +730,9 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
       _wave = 0;
    };
 
-   $("#left").on("click", player_action.move_left);
-   $("#right").on("click", player_action.move_right);
-   $("#fire").on("click", player_action.fire);
+   $("#left").on("touchstart", player_action.move_left);
+   $("#right").on("touchstart", player_action.move_right);
+   $("#fire").on("touchstart", player_action.fire);
    $("#start").on("click", function() {
       var r_keydown_event = jQuery.Event( "keydown", { keyCode: g_keys.letter_r } );
       $(document.body).trigger(r_keydown_event);
