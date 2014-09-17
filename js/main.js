@@ -467,7 +467,7 @@ var with_invasion = function(body, draw_invader, create_bomb, reset_targets, reg
    };
 
    var _remove_invader = (function() {
-      var explosion_sound = sound('art/sound/explosion.ogg');
+      var explosion_sound = sound('art/sound/explosion.wav');
       return function(row, col) {
          _remaining_invaders[row][col] = -1;
          _invasion_events.push("invasor_killed");
@@ -643,7 +643,7 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
    };
 
    var _decrease_player_lives = (function() {
-      var explosion_sound = sound('art/sound/player-explosion.ogg');
+      var explosion_sound = sound('art/sound/player-explosion.wav');
       return function () {
          _player_lives -= g_Config.player_lives_reduction;
          explosion_sound();
@@ -656,7 +656,7 @@ var with_player_cannon = function (body, draw_invader, create_bullet, register_t
    }());
 
    var increase_player_lives = (function() {
-      var life_extended_sound = sound('art/sound/life-extension.ogg');
+      var life_extended_sound = sound('art/sound/life-extension.wav');
       return function () {
          _player_lives += g_Config.player_lives_reduction;
          life_extended_sound();
