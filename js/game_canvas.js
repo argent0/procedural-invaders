@@ -10,6 +10,7 @@ var with_game_canvas = function(body) {
 
    var canvas = Lazy_value(function() {
       var canvas = document.createElement("canvas");
+      canvas.setAttribute("id", "canvas");
       canvas.width = g_Config.canvas_width;
       canvas.height = g_Config.canvas_height;
       game_div().appendChild(canvas);

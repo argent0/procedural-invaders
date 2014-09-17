@@ -8,13 +8,17 @@ var with_loop = function (interval, loop_body, before, interruptions) {
    var _paused = false;
 
    var pause_loop = function() {
-      console.log(_timeout_id);
       window.clearTimeout(_timeout_id);
       _paused = true;
    };
 
+   var restart_loop = function() {
+      _paused = false;
+      before(start_loop);
+   };
+
    var advance_step = function(){
-      _loop_body(interruptions, start_loop, pause_loop);
+      _loop_body(interruptions, start_loop, pause_loop, restart_loop);
    };
 
    var start_loop = function() {
@@ -27,6 +31,5 @@ var with_loop = function (interval, loop_body, before, interruptions) {
 
 
    before(start_loop);
-   //start_loop();
 };
 // vim: expandtab
