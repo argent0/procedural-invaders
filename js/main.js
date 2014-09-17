@@ -73,6 +73,9 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
       var _pixel_width = Math.floor(canvas().width / screen_width);
       var _pixel_height = Math.floor(canvas().height / screen_height);
 
+      self.pixel_width = function() { return _pixel_width; };
+      self.pixel_height = function() { return _pixel_height; };
+
       drawing_context().font = _pixel_height * 1.5 + 'px game-font';
 
       for(_video_col=0; _video_col < screen_width; _video_col++) {
@@ -93,6 +96,8 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
          }
          _text_lines = {};
          _text_line_id = 0;
+         _buttons = {};
+         _button_id = 0;
       };
 
       self.put_pixel = (function () {
@@ -169,8 +174,31 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
          }
       };
 
+      var _buttons = {};
+      var _button_id = 0;
+
+      var _Button = function(x, y, color) {
+         this.id = _button_id;
+         _button_id += 1;
+
+         this.draw = function() {
+            var radius = 3 * _pixel_width;
+
+            drawing_context().beginPath();
+            drawing_context().fillStyle = color;
+            drawing_context().arc(x * _pixel_width, y * _pixel_height, radius, 0, 2 * Math.PI, false);
+            drawing_context().fill();
+            drawing_context().closePath();
+         };
+      };
+
+      this.create_button = function(x, y, color) {
+         var button = new _Button(x, y, color);
+         _buttons[button.id.toString()] = button;
+         button.draw();
+      };
+
       self.redraw = function() {
-         console.log("Redraw");
          canvas().width = window.innerWidth;
          canvas().height = window.innerHeight;
          _pixel_width = Math.floor(canvas().width / screen_width);
@@ -191,6 +219,8 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
                      _pixel_height);
             });
          });
+
+         _.each(_buttons, function(button) { button.draw(); });
       };
 
 
@@ -201,6 +231,9 @@ var with_pixelated_screen = function(body, canvas, drawing_context, clear_screen
       self.height = function() {
          return screen_height;
       };
+
+      self.drawing_context = drawing_context;
+
 
    };
 
@@ -730,19 +763,85 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
       _wave = 0;
    };
 
-   $("#left").on("click", player_action.move_left);
-   $("#right").on("click", player_action.move_right);
-   $("#fire").on("click", player_action.fire);
-   $("#start").on("click", function() {
-      var r_keydown_event = jQuery.Event( "keydown", { keyCode: g_keys.letter_r } );
-      $(document.body).trigger(r_keydown_event);
+   //$("#left").on("click", player_action.move_left);
+   //$("#right").on("click", player_action.move_right);
+   //$("#fire").on("click", player_action.fire);
+   //$("#start").on("click", function() {
+   //   var r_keydown_event = jQuery.Event( "keydown", { keyCode: g_keys.letter_r } );
+   //   $(document.body).trigger(r_keydown_event);
+   //});
+
+   //$("#full-screen").on("click", function() { window.go_full_screen(); });
+
+
+   var _buttons = {};
+   var _button_id = 0;
+
+   var _Button = function(x, y, color, callback) {
+      var self = this;
+      self.id = _button_id;
+
+      _button_id++;
+      
+      self.draw = function() {
+         pixelated_screen.create_button(x, y, color);
+      };
+
+      self.contains = function(pixel_x, pixel_y) {
+
+         var pixelated_x = Math.floor(pixel_x / pixelated_screen.pixel_width());
+         var pixelated_y = Math.floor(pixel_y / pixelated_screen.pixel_height());
+
+         console.log("pxl " + pixel_x + " " + pixel_y);
+         console.log("clk " + pixelated_x + " " + pixelated_y);
+         console.log("btn " + x + " " + y);
+
+         var in_x_range = Math.abs(pixelated_x - x) < 5;
+         var in_y_range = Math.abs(pixelated_y - y) < 5;
+
+         if (in_x_range && in_y_range) {
+            callback();
+         }
+
+         return in_x_range && in_y_range;
+      };
+   };
+
+   $("body").on("mousedown", function(event) {
+      var button = _.any(_buttons, function(button) { button.contains(event.offsetX, event.offsetY); });
    });
 
-   $("#full-screen").on("click", function() { window.go_full_screen(); });
+
+   var _create_button = function(x, y, color, callback) {
+      var button = new _Button(x, y, color, callback);
+      _buttons[button.id.toString()] = button;
+   };
+
+   var _reset_buttons = function() {
+      _buttons = {};
+      _button_id = 0;
+   };
 
    var draw_on_screen_controls = function() {
-      $("#start-controls").css("visibility", "hidden");
-      $("#joystick").css("visibility", "visible");
+      //$("#start-controls").css("visibility", "hidden");
+      //$("#joystick").css("visibility", "visible");
+      //move-left
+      
+      _reset_buttons();
+      _create_button(Math.floor(pixelated_screen.width() * 1 / 16),
+                     Math.floor(pixelated_screen.height() * 15 / 16),
+                     '#ff0000',
+                     player_action.move_left);
+
+      _create_button(Math.floor(pixelated_screen.width() * 3 / 16),
+                     Math.floor(pixelated_screen.height() * 15 / 16),
+                     '#00ff00',
+                     player_action.move_right);
+
+      _create_button(Math.floor(pixelated_screen.width() * 15 / 16),
+                     Math.floor(pixelated_screen.height() * 15 / 16),
+                     '#0000ff',
+                     player_action.fire);
    };
 
    var draw_ui = function() {
@@ -762,13 +861,13 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
       pixelated_screen.write_text_at(_wave, g_Config.screen_width /4*3, 3 +
                     g_Config.message_font_height / g_Config.pixel_size);
 
-      //write_text_at(_score, g_Config.screen_width /2, 3);
+      _.each(_buttons, function(button) { button.draw(); });
+      
    };
 
    var increase_score = function (amount) {
       _score += amount;
       var extension_boundary = Math.pow(g_Config.invasor_kills_for_life_extensions, _life_extensions) * g_Config.invasor_kill_score;
-      console.log(extension_boundary);
       if ((_score > extension_boundary - 1) && (_score < extension_boundary + 1)) {
          if (remaining_player_lives() < g_Config.player_initial_lives) {
             increase_player_lives();
@@ -781,9 +880,25 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
       _wave += 1;
    };
 
+   var _create_start_controls = function() {
+      _reset_buttons();
+      _create_button(Math.floor(pixelated_screen.width() * 1 / 16),
+                     Math.floor(pixelated_screen.height() * 15 / 16),
+                     '#ff0000',
+                     function() {
+                        var r_keydown_event = jQuery.Event( "keydown", { keyCode: g_keys.letter_r } );
+                        $(document.body).trigger(r_keydown_event);
+                     });
+
+      _create_button(Math.floor(pixelated_screen.width() * 3 / 16),
+                     Math.floor(pixelated_screen.height() * 15 / 16),
+                     '#00ff00',
+                     window.go_full_screen);
+   };
+
    var draw_game_restart_screen = function (restart_message) {
-      $("#start-controls").css("visibility", "visible");
-      $("#joystick").css("visibility", "hidden");
+      //$("#start-controls").css("visibility", "visible");
+      //$("#joystick").css("visibility", "hidden");
 
       pixelated_screen.clear();
       pixelated_screen.write_text_at(restart_message, g_Config.screen_width / 4, g_Config.screen_height / 2);
@@ -804,6 +919,7 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
    };
 
    var draw_splash_screen = function() {
+
       pixelated_screen.clear();
       var lines = [
          "***......................................................",
@@ -844,6 +960,9 @@ var with_ui = function(body, pixelated_screen, draw_invader, remaining_player_li
             console.log("No recorded max score");
          }
       }
+
+      _create_start_controls();
+      _.each(_buttons, function(button) { button.draw(); });
 
       //$("#start").on("click", function() { reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop(); });
 
