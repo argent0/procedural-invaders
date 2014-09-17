@@ -893,13 +893,14 @@ with_loop(100, function(interruptions, start_loop, pause_loop, restart_loop) {
       bind_key(g_keys.right, player_action.move_right);
       bind_key(g_keys.space, player_action.fire); 
       bind_key(g_keys.letter_f, go_full_screen); 
-      bind_key(g_keys.letter_r, _.throttle(
-         function() {
-         console.log("Starting");
-         reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop();
-      }, 1000, {leading: false, trailing: false}));
+      //bind_key(g_keys.letter_r, _.throttle(
+      //   function() {
+      //   console.log("Starting");
+      //   reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop();
+      //}, 1000, {leading: false, trailing: false}));
       bind_key(g_keys.letter_r, function() {
          console.log("Starting");
+         reset_player_lives();
          reset_score(); setup_invasion(); draw_on_screen_controls(); start_loop();
       });
    },{
